@@ -1,0 +1,428 @@
+<div id="spotTheBallApp">
+    <style>
+        #spotTheBallApp {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333; margin: 0 auto; padding: 10px;
+            display: flex; flex-direction: column; align-items: center; max-width: 920px;
+        }
+        #spotTheBallApp h2 { color: #ffffff; margin-bottom: 5px; text-align: center; }
+        #spotTheBallApp .club-sub { color: #7f8c8d; margin-top: 0; margin-bottom: 25px; font-weight: 500; text-align: center; }
+        #spotTheBallApp .panel { background-color: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; width: 100%; box-sizing: border-box; }
+        #spotTheBallApp .flex-panel { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between; }
+        #spotTheBallApp .panel-section { display: flex; align-items: center; gap: 10px; }
+        #spotTheBallApp .full-width-section { width: 100%; margin-top: 10px; display: flex; flex-direction: column; gap: 5px;}
+        #spotTheBallApp input[type="text"], #spotTheBallApp input[type="file"], #spotTheBallApp input[type="password"], #spotTheBallApp textarea { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1.2rem; }
+        #spotTheBallApp textarea { resize: vertical; font-family: monospace; }
+        #spotTheBallApp button { background-color: #2e7d32; color: white; border: none; padding: 10px 18px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        #spotTheBallApp button:hover { background-color: #1b5e20; }
+        
+        /* Styled GoCardless Button */
+        #spotTheBallApp .gocardless-btn { background-color: #0c8263; color: white; font-size: 1.3rem; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.15); transition: background 0.2s; text-align: center; }
+        #spotTheBallApp .gocardless-btn:hover { background-color: #09614a; }
+
+        #spotTheBallApp .lock-btn { background-color: #d84315; }
+        #spotTheBallApp .lock-btn:hover { background-color: #bf360c; }
+        #spotTheBallApp .reveal-btn { background-color: #c62828; }
+        #spotTheBallApp .reveal-btn:hover { background-color: #b71c1c; }
+        #spotTheBallApp .game-container { position: relative; margin: 15px 0; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border-radius: 4px; overflow: hidden; background: #e0e0e0; min-height: 100px; display: none; max-width: 100%; }
+        #spotTheBallApp canvas { display: block; max-width: 100%; height: auto; }
+        #spotTheBallApp #markerCanvas { position: absolute; top: 0; left: 0; }
+        #spotTheBallApp #winnerDisplay { margin-top: 15px; font-size: 3rem; font-weight: bold; color: #ffffff; text-align: center; }
+        #spotTheBallApp .hidden { display: none !important; }
+        #spotTheBallApp .admin-footer { margin-top: 40px; border-top: 1px dashed #ccc; padding-top: 20px; width: 100%; }
+        #spotTheBallApp .ticket-badge { background-color: #e8f5e9; color: #2e7d32; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
+        #spotTheBallApp .loading-overlay { margin: 20px; font-weight: bold; color: #7f8c8d; }
+        #spotTheBallApp .payment-box { text-align: center; padding: 20px; border: 2px dashed #0c8263; border-radius: 8px; margin-bottom: 20px; background-color: #e8f5e9; }
+    </style>
+
+    <h2>Spot the Ball</h2>
+    <p class="club-sub">⚽ Live Multi-Device Club Fundraiser</p>
+    
+    <div id="loadingMessage" class="loading-overlay">Connecting to cloud game server...</div>
+
+    <div id="adminSetupPanel" class="panel flex-panel hidden">
+        <div class="panel-section">
+            <label><strong>1. Load Image:</strong></label>
+            <input type="file" id="imageLoader" accept="image/*">
+        </div>
+        <div class="panel-section">
+            <input type="password" id="setupPassword" placeholder="Admin Password" value="admin123" style="width: 120px;">
+            <button id="lockBtn" class="lock-btn">3. Lock & Go Live</button>
+        </div>
+        <div class="full-width-section">
+            <label><strong>2. Starting Ticket Numbers (Optional manual entry, separate with commas):</strong></label>
+            <textarea id="gamePasscodesList" rows="2" placeholder="e.g., CLUB01, CLUB02">CLUB01, CLUB02</textarea>
+        </div>
+    </div>
+
+    <div id="paymentGatewayBox" class="panel payment-box hidden">
+        <h3 style="margin-top:0; color:#0c8263;">🎟️ Need a Ticket to Play?</h3>
+        <p style="margin-bottom:15px;">Each entry raises vital funds for our junior football club. Pay securely via GoCardless below:</p>
+        <a href="https://pay.gocardless.com/your-actual-pay-link" class="gocardless-btn" target="_top">⚽ Pay Entry Fee via GoCardless</a>
+    </div>
+
+    <div id="playerPanel" class="panel hidden">
+        <div class="flex-panel">
+            <div class="panel-section">
+                <label for="playerName"><strong>Your Name:</strong></label>
+                <input type="text" id="playerName" value="Player 1" style="width: 130px;">
+            </div>
+            <div class="panel-section">
+                <label for="entryCode"><strong>Active Code:</strong></label>
+                <input type="text" id="entryCode" placeholder="Buy ticket to unlock" style="width: 180px; border-color: #2e7d32; font-weight:bold; color:#2e7d32;" readonly>
+            </div>
+            <div class="panel-section">
+                <span class="ticket-badge" id="ticketCountDisplay">Total Active Codes: 0</span>
+            </div>
+        </div>
+        <div style="margin-top: 15px; text-align: center;">
+            <span style="color: #2e7d32; font-weight: 600; font-size:1.1rem;">⚠️ Code verified! Click on the image below to submit your official guess!</span>
+        </div>
+    </div>
+
+    <div class="game-container" id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <canvas id="markerCanvas"></canvas>
+    </div>
+
+    <div id="winnerDisplay"></div>
+
+    <div id="adminEndPanel" class="admin-footer hidden">
+        <div class="panel flex-panel">
+            <div class="panel-section">
+                <label><strong>Admin Close Options:</strong></label>
+                <input type="password" id="endPassword" placeholder="Admin Password" style="width: 130px;">
+                <button id="revealBtn" class="reveal-btn">🎉 Reveal Winner</button>
+            </div>
+            <button id="resetBtn" style="background-color: #78909c;">Full Reset Game</button>
+        </div>
+    </div>
+
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+<script>
+(function() {
+    const firebaseConfig = {
+        apiKey: "AIzaSyBfMs_IoqqnjG0qd-GheyXVVbHwpIeQvpE",
+        authDomain: "spot-the-ball-beighton-juniors.firebaseapp.com",
+        databaseURL: "https://spot-the-ball-beighton-juniors-default-rtdb.firebaseio.com/",
+        projectId: "spot-the-ball-beighton-juniors",
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const dbRef = firebase.database().ref("spotTheBallGame");
+
+    const root = document.getElementById('spotTheBallApp');
+    const imageLoader = root.querySelector('#imageLoader');
+    const gameContainer = root.querySelector('#gameContainer');
+    const gameCanvas = root.querySelector('#gameCanvas');
+    const markerCanvas = root.querySelector('#markerCanvas');
+    const ctx = gameCanvas.getContext('2d');
+    const mCtx = markerCanvas.getContext('2d');
+    
+    const adminSetupPanel = root.querySelector('#adminSetupPanel');
+    const paymentGatewayBox = root.querySelector('#paymentGatewayBox');
+    const playerPanel = root.querySelector('#playerPanel');
+    const adminEndPanel = root.querySelector('#adminEndPanel');
+    const loadingMessage = root.querySelector('#loadingMessage');
+    
+    const lockBtn = root.querySelector('#lockBtn');
+    const revealBtn = root.querySelector('#revealBtn');
+    const resetBtn = root.querySelector('#resetBtn');
+    const setupPasswordInput = root.querySelector('#setupPassword');
+    const endPasswordInput = root.querySelector('#endPassword');
+    const gamePasscodesList = root.querySelector('#gamePasscodesList');
+    const entryCodeInput = root.querySelector('#entryCode');
+    const playerNameInput = root.querySelector('#playerName');
+    const winnerDisplay = root.querySelector('#winnerDisplay');
+    const ticketCountDisplay = root.querySelector('#ticketCountDisplay');
+
+    let globalImgInstance = null; 
+    let localGameState = {
+        isLocked: false,
+        gameRevealed: false,
+        ballLocation: null,
+        adminPassword: "admin123",
+        validCodes: [],
+        guesses: [],
+        base64Image: ""
+    };
+
+    dbRef.on('value', (snapshot) => {
+        loadingMessage.classList.add('hidden');
+        const data = snapshot.val();
+        
+        if (!data) {
+            localGameState = { isLocked: false, gameRevealed: false, ballLocation: null, adminPassword: "admin123", validCodes: [], guesses: [], base64Image: "" };
+            showPanelLayout();
+            return;
+        }
+
+        localGameState = data;
+        if (!localGameState.guesses) localGameState.guesses = [];
+        if (!localGameState.validCodes) localGameState.validCodes = [];
+
+        if (localGameState.base64Image) {
+            const img = new Image();
+            img.onload = function() {
+                globalImgInstance = img;
+                resizeAndDrawCanvas(img);
+                showPanelLayout();
+            };
+            img.src = localGameState.base64Image;
+        } else {
+            showPanelLayout();
+        }
+    }, (error) => {
+        loadingMessage.innerText = "Connection Failed!";
+        console.error(error);
+    });
+
+    function resizeAndDrawCanvas(img) {
+        const maxWidth = 900;
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+            height = (maxWidth / width) * height;
+            width = maxWidth;
+        }
+        gameCanvas.width = width;
+        gameCanvas.height = height;
+        markerCanvas.width = width;
+        markerCanvas.height = height;
+        
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        gameContainer.style.display = "block";
+        drawMarkers();
+    }
+
+    function showPanelLayout() {
+        if (!localGameState.isLocked) {
+            adminSetupPanel.classList.remove('hidden');
+            playerPanel.classList.add('hidden');
+            paymentGatewayBox.classList.add('hidden');
+            adminEndPanel.classList.add('hidden');
+            gameContainer.style.display = globalImgInstance ? "block" : "none";
+        } else {
+            adminSetupPanel.classList.add('hidden');
+            adminEndPanel.classList.remove('hidden');
+            ticketCountDisplay.innerText = `Total Pool Codes: ${localGameState.validCodes.length}`;
+            
+            // Redirect parameter hook for GoCardless
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            if (urlParams.get('status') === 'paid' && !sessionStorage.getItem('ball_ticket')) {
+                const newAutoToken = "GC-" + Math.floor(100000 + Math.random() * 900000);
+                
+                entryCodeInput.value = newAutoToken;
+                sessionStorage.setItem('ball_ticket', newAutoToken);
+                
+                localGameState.validCodes.push(newAutoToken);
+                dbRef.set(localGameState);
+                
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } else if (sessionStorage.getItem('ball_ticket')) {
+                entryCodeInput.value = sessionStorage.getItem('ball_ticket');
+            }
+
+            if (entryCodeInput.value !== "") {
+                playerPanel.classList.remove('hidden');
+                paymentGatewayBox.classList.add('hidden');
+            } else {
+                playerPanel.classList.add('hidden');
+                paymentGatewayBox.classList.remove('hidden');
+            }
+            
+            if (localGameState.gameRevealed) {
+                paymentGatewayBox.classList.add('hidden');
+                playerPanel.classList.add('hidden');
+                const winner = getWinner();
+                if (winner) {
+                    winnerDisplay.innerHTML = `🏆 Winner: <strong>${winner.name}</strong> (${winner.ticketUsed})!`;
+                }
+            } else {
+                winnerDisplay.innerHTML = "";
+            }
+        }
+    }
+
+    imageLoader.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    globalImgInstance = img;
+                    localGameState.base64Image = event.target.result;
+                    localGameState.ballLocation = null;
+                    resizeAndDrawCanvas(img);
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    markerCanvas.addEventListener('mousedown', function(e) {
+        if (!globalImgInstance || localGameState.gameRevealed || !localGameState.isLocked) {
+            if(!localGameState.isLocked && globalImgInstance) {
+                const rect = gameCanvas.getBoundingClientRect();
+                const clickXPercent = (e.clientX - rect.left) / rect.width;
+                const clickYPercent = (e.clientY - rect.top) / rect.height;
+                localGameState.ballLocation = { x: clickXPercent * gameCanvas.width, y: clickYPercent * gameCanvas.height };
+                drawAdminIndicator();
+            }
+            return;
+        }
+
+        const rect = gameCanvas.getBoundingClientRect();
+        const clickXPercent = (e.clientX - rect.left) / rect.width;
+        const clickYPercent = (e.clientY - rect.top) / rect.height;
+        const actualX = clickXPercent * gameCanvas.width;
+        const actualY = clickYPercent * gameCanvas.height;
+
+        const typedCode = entryCodeInput.value.trim().toUpperCase();
+        const codeIndex = localGameState.validCodes.indexOf(typedCode);
+        
+        if (codeIndex === -1 || typedCode === "") {
+            alert("No valid authorization ticket found! Please buy an entry via GoCardless.");
+            return;
+        }
+        
+        const pName = playerNameInput.value.trim() || `Player ${localGameState.guesses.length + 1}`;
+        
+        localGameState.guesses.push({ name: pName, x: actualX, y: actualY, ticketUsed: typedCode });
+        localGameState.validCodes.splice(codeIndex, 1);
+        
+        sessionStorage.removeItem('ball_ticket');
+        entryCodeInput.value = "";
+        
+        dbRef.set(localGameState);
+        alert(`Thanks ${pName}! Your guess has been securely locked.`);
+    });
+
+    function drawAdminIndicator() {
+        mCtx.clearRect(0, 0, markerCanvas.width, markerCanvas.height);
+        if (localGameState.ballLocation) {
+            mCtx.beginPath();
+            mCtx.arc(localGameState.ballLocation.x, localGameState.ballLocation.y, 6, 0, 2 * Math.PI);
+            mCtx.fillStyle = '#ff3d00';
+            mCtx.fill();
+        }
+    }
+
+    lockBtn.addEventListener('click', () => {
+        if (!localGameState.ballLocation) {
+            alert("Error: Click on the image first to set where the ball is!");
+            return;
+        }
+        const rawCodes = gamePasscodesList.value.split(',');
+        const parsedCodes = [];
+        rawCodes.forEach(code => {
+            const cleanCode = code.trim().toUpperCase();
+            if (cleanCode.length > 0) parsedCodes.push(cleanCode);
+        });
+        
+        localGameState.validCodes = parsedCodes;
+        localGameState.adminPassword = setupPasswordInput.value;
+        localGameState.isLocked = true;
+        localGameState.gameRevealed = false;
+        localGameState.guesses = [];
+
+        dbRef.set(localGameState);
+    });
+
+    function drawMarkers() {
+        mCtx.clearRect(0, 0, markerCanvas.width, markerCanvas.height);
+        mCtx.shadowBlur = 0;
+
+        localGameState.guesses.forEach(guess => {
+            mCtx.beginPath();
+            mCtx.arc(guess.x, guess.y, 5, 0, 2 * Math.PI);
+            mCtx.fillStyle = '#0288d1';
+            mCtx.fill();
+        });
+
+        if (localGameState.gameRevealed && localGameState.ballLocation) {
+            mCtx.beginPath();
+            mCtx.arc(localGameState.ballLocation.x, localGameState.ballLocation.y, 12, 0, 2 * Math.PI);
+            mCtx.fillStyle = '#2e7d32';
+            mCtx.fill();
+            mCtx.lineWidth = 2;
+            mCtx.strokeStyle = '#ffffff';
+            mCtx.stroke();
+
+            let winner = getWinner();
+            localGameState.guesses.forEach(guess => {
+                mCtx.beginPath();
+                mCtx.moveTo(guess.x, guess.y);
+                mCtx.lineTo(localGameState.ballLocation.x, localGameState.ballLocation.y);
+                if (winner && guess.ticketUsed === winner.ticketUsed) {
+                    mCtx.strokeStyle = '#2e7d32';
+                    mCtx.lineWidth = 4;
+                } else {
+                    mCtx.strokeStyle = 'rgba(211, 47, 47, 0.35)';
+                    mCtx.lineWidth = 1.5;
+                }
+                mCtx.stroke();
+
+                mCtx.shadowColor = "black";
+                mCtx.shadowBlur = 4;
+                mCtx.lineWidth = 2;
+
+                mCtx.fillStyle = '#ffffff';
+                mCtx.font = 'bold 20px sans-serif';
+                mCtx.fillText(` ${guess.name} (${guess.ticketUsed})`, guess.x + 8, guess.y + 4);
+                mCtx.shadowBlur = 0;
+            });
+        }
+    }
+
+    function getWinner() {
+        if (!localGameState.ballLocation || !localGameState.guesses || localGameState.guesses.length === 0) return null;
+        let winner = null;
+        let shortestDistance = Infinity;
+        localGameState.guesses.forEach(guess => {
+            const dx = guess.x - localGameState.ballLocation.x;
+            const dy = guess.y - localGameState.ballLocation.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < shortestDistance) {
+                shortestDistance = distance;
+                winner = guess;
+            }
+        });
+        return winner;
+    }
+
+    revealBtn.addEventListener('click', () => {
+        if (endPasswordInput.value !== localGameState.adminPassword) {
+            alert("Incorrect Admin Security Password!");
+            return;
+        }
+        if (localGameState.guesses.length === 0) {
+            alert("No valid guesses have been played yet.");
+            return;
+        }
+        localGameState.gameRevealed = true;
+        dbRef.set(localGameState);
+    });
+
+    resetBtn.addEventListener('click', () => {
+        if (endPasswordInput.value !== localGameState.adminPassword) {
+            alert("Incorrect Admin Security Password to reset game!");
+            return;
+        }
+        dbRef.remove();
+        sessionStorage.removeItem('ball_ticket');
+        globalImgInstance = null;
+        gameContainer.style.display = "none";
+        imageLoader.value = "";
+        endPasswordInput.value = "";
+        entryCodeInput.value = "";
+    });
+})();
+</script>
+</div>
