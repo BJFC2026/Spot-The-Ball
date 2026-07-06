@@ -57,7 +57,7 @@
     <div id="paymentGatewayBox" class="panel payment-box hidden">
         <h3 style="margin-top:0; color:#0c8263;">🎟️ Need a Ticket to Play?</h3>
         <p style="margin-bottom:15px;">Each entry raises vital funds for our junior football club. Pay securely via GoCardless below:</p>
-        <a href="https://pay-sandbox.gocardless.com/BRT01KWVJVQ5QTQZ87B7QEYVZ447X" class="gocardless-btn" target="_top">⚽ Pay Entry Fee via GoCardless</a>
+        <a href="https://pay-sandbox.gocardless.com/BRT01KWVEJJP316BY5408ESJEAA6K" class="gocardless-btn" target="_top">⚽ Pay Entry Fee via GoCardless</a>
     </div>
 
     <div id="playerPanel" class="panel hidden">
@@ -220,6 +220,7 @@
         } else {
             ticketCountDisplay.innerText = `Total Pool Codes: ${localGameState.validCodes.length}`;
             
+            // GoCardless URL param verification routing
             if (urlParams.get('status') === 'paid' && !sessionStorage.getItem('ball_ticket')) {
                 const newAutoToken = "GC-" + Math.floor(100000 + Math.random() * 900000);
                 
@@ -234,6 +235,7 @@
                 entryCodeInput.value = sessionStorage.getItem('ball_ticket');
             }
 
+            // 🌟 ENFORCE SINGLE DOT VISIBILITY LAYER
             if (entryCodeInput.value !== "") {
                 playerPanel.classList.remove('hidden');
                 paymentGatewayBox.classList.add('hidden');
@@ -287,25 +289,27 @@
             return;
         }
 
+        const typedCode = entryCodeInput.value.trim().toUpperCase();
+        const codeIndex = localGameState.validCodes.indexOf(typedCode);
+        
+        // 🌟 BLOCK MULTIPLE HITS: If token input is blank, click execution cancels immediately
+        if (codeIndex === -1 || typedCode === "") {
+            alert("Please purchase a ticket entry via GoCardless to secure an active game code!");
+            return;
+        }
+
         const rect = gameCanvas.getBoundingClientRect();
         const clickXPercent = (e.clientX - rect.left) / rect.width;
         const clickYPercent = (e.clientY - rect.top) / rect.height;
         const actualX = clickXPercent * gameCanvas.width;
         const actualY = clickYPercent * gameCanvas.height;
-
-        const typedCode = entryCodeInput.value.trim().toUpperCase();
-        const codeIndex = localGameState.validCodes.indexOf(typedCode);
-        
-        if (codeIndex === -1 || typedCode === "") {
-            alert("No valid authorization ticket found! Please buy an entry via GoCardless.");
-            return;
-        }
         
         const pName = playerNameInput.value.trim() || `Player ${localGameState.guesses.length + 1}`;
         
         localGameState.guesses.push({ name: pName, x: actualX, y: actualY, ticketUsed: typedCode });
         localGameState.validCodes.splice(codeIndex, 1);
         
+        // Consuming token tracking properties directly on completion
         sessionStorage.removeItem('ball_ticket');
         entryCodeInput.value = "";
         
@@ -377,14 +381,11 @@
                 }
                 mCtx.stroke();
 
-                // 🌟 FIX APPLIED HERE: Re-ordered engine parameters strictly for filled text tracking
                 mCtx.shadowColor = "black";
                 mCtx.shadowBlur = 5;
-                mCtx.fillStyle = '#ffffff'; // Clean 6-unit White Hex
+                mCtx.fillStyle = '#ffffff';
                 mCtx.font = 'bold 20px sans-serif';
                 mCtx.fillText(` ${guess.name} (${guess.ticketUsed})`, guess.x + 8, guess.y + 4);
-                
-                // Clear shadows immediately so lines aren't blurry
                 mCtx.shadowBlur = 0;
             });
         }
