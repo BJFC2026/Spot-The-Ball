@@ -11,7 +11,7 @@
         #spotTheBallApp .flex-panel { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between; }
         #spotTheBallApp .panel-section { display: flex; align-items: center; gap: 10px; }
         #spotTheBallApp .full-width-section { width: 100%; margin-top: 10px; display: flex; flex-direction: column; gap: 5px;}
-        #spotTheBallApp input[type="text"], #spotTheBallApp input[type="file"], #spotTheBallApp input[type="password"], #spotTheBallApp textarea { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1.2rem; }
+        #spotTheBallApp input[type="text"], #spotTheBallApp input[type="file"], #spotTheBallApp textarea { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1.2rem; }
         #spotTheBallApp textarea { resize: vertical; font-family: monospace; }
         #spotTheBallApp button { background-color: #2e7d32; color: white; border: none; padding: 10px 18px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
         #spotTheBallApp button:hover { background-color: #1b5e20; }
@@ -40,27 +40,30 @@
     
     <div id="loadingMessage" class="loading-overlay">Connecting to cloud game server...</div>
 
+    <!-- 1. ADMIN SETUP PANEL (Url Parameter Protected) -->
     <div id="adminSetupPanel" class="panel flex-panel hidden">
         <div class="panel-section">
             <label><strong>1. Load Image:</strong></label>
             <input type="file" id="imageLoader" accept="image/*">
         </div>
         <div class="panel-section">
-            <input type="password" id="setupPassword" placeholder="Admin Password" value="admin123" style="width: 120px;">
-            <button id="lockBtn" class="lock-btn">3. Lock & Go Live</button>
+            <button id="lockBtn" class="lock-btn">2. Lock Position & Go Live</button>
         </div>
         <div class="full-width-section">
-            <label><strong>2. Starting Ticket Numbers (Optional manual entry, separate with commas):</strong></label>
-            <textarea id="gamePasscodesList" rows="2" placeholder="e.g., CLUB01, CLUB02">CLUB01, CLUB02</textarea>
+            <label><strong>Optional: Manual Starting Ticket Pool Input (Separate with commas):</strong></label>
+            <textarea id="gamePasscodesList" rows="2" placeholder="e.g., MAN01, MAN02">MAN01, MAN02</textarea>
         </div>
     </div>
 
+    <!-- GOCARDLESS GATEWAY CONTROL BOX -->
     <div id="paymentGatewayBox" class="panel payment-box hidden">
         <h3 style="margin-top:0; color:#0c8263;">🎟️ Need a Ticket to Play?</h3>
         <p style="margin-bottom:15px;">Each entry raises vital funds for our junior football club. Pay securely via GoCardless below:</p>
+        <!-- 🔴 PASTE YOUR ACTUAL GOCARDLESS PAYLINK IN THE href="" BELOW -->
         <a href="https://pay.gocardless.com/your-actual-pay-link" class="gocardless-btn" target="_top">⚽ Pay Entry Fee via GoCardless</a>
     </div>
 
+    <!-- 2. PLAYER INTERACTION PANEL -->
     <div id="playerPanel" class="panel hidden">
         <div class="flex-panel">
             <div class="panel-section">
@@ -80,18 +83,20 @@
         </div>
     </div>
 
+    <!-- GAME CANVAS CONTAINER -->
     <div class="game-container" id="gameContainer">
         <canvas id="gameCanvas"></canvas>
         <canvas id="markerCanvas"></canvas>
     </div>
 
+    <!-- RESULTS DISPLAY -->
     <div id="winnerDisplay"></div>
 
+    <!-- 3. ADMIN END GAME PANEL (Url Parameter Protected) -->
     <div id="adminEndPanel" class="admin-footer hidden">
         <div class="panel flex-panel">
             <div class="panel-section">
-                <label><strong>Admin Close Options:</strong></label>
-                <input type="password" id="endPassword" placeholder="Admin Password" style="width: 130px;">
+                <label><strong>Secret Admin Close Options:</strong></label>
                 <button id="revealBtn" class="reveal-btn">🎉 Reveal Winner</button>
             </div>
             <button id="resetBtn" style="background-color: #78909c;">Full Reset Game</button>
@@ -104,14 +109,10 @@
 <script>
 (function() {
     const firebaseConfig = {
-        aapiKey: "AIzaSyBCe6fVx9B3hatmro2YvO64N3X3kJWuykg",
-  authDomain: "spot-the-ball-df116.firebaseapp.com",
-  databaseURL: "https://spot-the-ball-df116-default-rtdb.firebaseio.com",
-  projectId: "spot-the-ball-df116",
-  storageBucket: "spot-the-ball-df116.firebasestorage.app",
-  messagingSenderId: "565307523744",
-  appId: "1:565307523744:web:33fe8fb630b68faedcbfc5",
-  measurementId: "G-ZT34HQJB10"
+        apiKey: "AIzaSyBfMs_IoqqnjG0qd-GheyXVVbHwpIeQvpE",
+        authDomain: "spot-the-ball-beighton-juniors.firebaseapp.com",
+        databaseURL: "https://spot-the-ball-beighton-juniors-default-rtdb.firebaseio.com/",
+        projectId: "spot-the-ball-beighton-juniors",
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -134,8 +135,6 @@
     const lockBtn = root.querySelector('#lockBtn');
     const revealBtn = root.querySelector('#revealBtn');
     const resetBtn = root.querySelector('#resetBtn');
-    const setupPasswordInput = root.querySelector('#setupPassword');
-    const endPasswordInput = root.querySelector('#endPassword');
     const gamePasscodesList = root.querySelector('#gamePasscodesList');
     const entryCodeInput = root.querySelector('#entryCode');
     const playerNameInput = root.querySelector('#playerName');
@@ -147,18 +146,21 @@
         isLocked: false,
         gameRevealed: false,
         ballLocation: null,
-        adminPassword: "admin123",
         validCodes: [],
         guesses: [],
         base64Image: ""
     };
+
+    // Global Key Validation Check 
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdminAuthenticated = (urlParams.get('admin') === 'BeightonSTB');
 
     dbRef.on('value', (snapshot) => {
         loadingMessage.classList.add('hidden');
         const data = snapshot.val();
         
         if (!data) {
-            localGameState = { isLocked: false, gameRevealed: false, ballLocation: null, adminPassword: "admin123", validCodes: [], guesses: [], base64Image: "" };
+            localGameState = { isLocked: false, gameRevealed: false, ballLocation: null, validCodes: [], guesses: [], base64Image: "" };
             showPanelLayout();
             return;
         }
@@ -203,20 +205,28 @@
     }
 
     function showPanelLayout() {
-        if (!localGameState.isLocked) {
+        // Handle Admin Panel Visibility strictly based on URL key auth
+        if (isAdminAuthenticated && !localGameState.isLocked) {
             adminSetupPanel.classList.remove('hidden');
-            playerPanel.classList.add('hidden');
-            paymentGatewayBox.classList.add('hidden');
-            adminEndPanel.classList.add('hidden');
-            gameContainer.style.display = globalImgInstance ? "block" : "none";
         } else {
             adminSetupPanel.classList.add('hidden');
+        }
+
+        if (isAdminAuthenticated && localGameState.isLocked) {
             adminEndPanel.classList.remove('hidden');
+        } else {
+            adminEndPanel.classList.add('hidden');
+        }
+
+        // Handle Active Player Phase UI rendering paths
+        if (!localGameState.isLocked) {
+            playerPanel.classList.add('hidden');
+            paymentGatewayBox.classList.add('hidden');
+            gameContainer.style.display = globalImgInstance ? "block" : "none";
+        } else {
             ticketCountDisplay.innerText = `Total Pool Codes: ${localGameState.validCodes.length}`;
             
-            // Redirect parameter hook for GoCardless
-            const urlParams = new URLSearchParams(window.location.search);
-            
+            // GoCardless automation success verification flag reader
             if (urlParams.get('status') === 'paid' && !sessionStorage.getItem('ball_ticket')) {
                 const newAutoToken = "GC-" + Math.floor(100000 + Math.random() * 900000);
                 
@@ -271,8 +281,11 @@
     });
 
     markerCanvas.addEventListener('mousedown', function(e) {
-        if (!globalImgInstance || localGameState.gameRevealed || !localGameState.isLocked) {
-            if(!localGameState.isLocked && globalImgInstance) {
+        if (!globalImgInstance || localGameState.gameRevealed) return;
+
+        // If game is un-locked and user has the admin URL parameter key, they are setting target vectors
+        if (!localGameState.isLocked) {
+            if (isAdminAuthenticated) {
                 const rect = gameCanvas.getBoundingClientRect();
                 const clickXPercent = (e.clientX - rect.left) / rect.width;
                 const clickYPercent = (e.clientY - rect.top) / rect.height;
@@ -331,7 +344,6 @@
         });
         
         localGameState.validCodes = parsedCodes;
-        localGameState.adminPassword = setupPasswordInput.value;
         localGameState.isLocked = true;
         localGameState.gameRevealed = false;
         localGameState.guesses = [];
@@ -402,10 +414,6 @@
     }
 
     revealBtn.addEventListener('click', () => {
-        if (endPasswordInput.value !== localGameState.adminPassword) {
-            alert("Incorrect Admin Security Password!");
-            return;
-        }
         if (localGameState.guesses.length === 0) {
             alert("No valid guesses have been played yet.");
             return;
@@ -415,16 +423,11 @@
     });
 
     resetBtn.addEventListener('click', () => {
-        if (endPasswordInput.value !== localGameState.adminPassword) {
-            alert("Incorrect Admin Security Password to reset game!");
-            return;
-        }
         dbRef.remove();
         sessionStorage.removeItem('ball_ticket');
         globalImgInstance = null;
         gameContainer.style.display = "none";
         imageLoader.value = "";
-        endPasswordInput.value = "";
         entryCodeInput.value = "";
     });
 })();
