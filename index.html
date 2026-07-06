@@ -40,7 +40,6 @@
     
     <div id="loadingMessage" class="loading-overlay">Connecting to cloud game server...</div>
 
-    <!-- 1. ADMIN SETUP PANEL (Url Parameter Protected) -->
     <div id="adminSetupPanel" class="panel flex-panel hidden">
         <div class="panel-section">
             <label><strong>1. Load Image:</strong></label>
@@ -55,15 +54,12 @@
         </div>
     </div>
 
-    <!-- GOCARDLESS GATEWAY CONTROL BOX -->
     <div id="paymentGatewayBox" class="panel payment-box hidden">
         <h3 style="margin-top:0; color:#0c8263;">🎟️ Need a Ticket to Play?</h3>
         <p style="margin-bottom:15px;">Each entry raises vital funds for our junior football club. Pay securely via GoCardless below:</p>
-        <!-- 🔴 PASTE YOUR ACTUAL GOCARDLESS PAYLINK IN THE href="" BELOW -->
         <a href="https://pay-sandbox.gocardless.com/BRT01KWVEJJP316BY5408ESJEAA6K" class="gocardless-btn" target="_top">⚽ Pay Entry Fee via GoCardless</a>
     </div>
 
-    <!-- 2. PLAYER INTERACTION PANEL -->
     <div id="playerPanel" class="panel hidden">
         <div class="flex-panel">
             <div class="panel-section">
@@ -83,16 +79,13 @@
         </div>
     </div>
 
-    <!-- GAME CANVAS CONTAINER -->
     <div class="game-container" id="gameContainer">
         <canvas id="gameCanvas"></canvas>
         <canvas id="markerCanvas"></canvas>
     </div>
 
-    <!-- RESULTS DISPLAY -->
     <div id="winnerDisplay"></div>
 
-    <!-- 3. ADMIN END GAME PANEL (Url Parameter Protected) -->
     <div id="adminEndPanel" class="admin-footer hidden">
         <div class="panel flex-panel">
             <div class="panel-section">
@@ -110,13 +103,13 @@
 (function() {
     const firebaseConfig = {
         apiKey: "AIzaSyBCe6fVx9B3hatmro2YvO64N3X3kJWuykg",
-  authDomain: "spot-the-ball-df116.firebaseapp.com",
-  databaseURL: "https://spot-the-ball-df116-default-rtdb.firebaseio.com",
-  projectId: "spot-the-ball-df116",
-  storageBucket: "spot-the-ball-df116.firebasestorage.app",
-  messagingSenderId: "565307523744",
-  appId: "1:565307523744:web:33fe8fb630b68faedcbfc5",
-  measurementId: "G-ZT34HQJB10"
+        authDomain: "spot-the-ball-df116.firebaseapp.com",
+        databaseURL: "https://spot-the-ball-df116-default-rtdb.firebaseio.com",
+        projectId: "spot-the-ball-df116",
+        storageBucket: "spot-the-ball-df116.firebasestorage.app",
+        messagingSenderId: "565307523744",
+        appId: "1:565307523744:web:33fe8fb630b68faedcbfc5",
+        measurementId: "G-ZT34HQJB10"
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -155,7 +148,6 @@
         base64Image: ""
     };
 
-    // Global Key Validation Check 
     const urlParams = new URLSearchParams(window.location.search);
     const isAdminAuthenticated = (urlParams.get('admin') === 'BeightonSTB');
 
@@ -209,7 +201,6 @@
     }
 
     function showPanelLayout() {
-        // Handle Admin Panel Visibility strictly based on URL key auth
         if (isAdminAuthenticated && !localGameState.isLocked) {
             adminSetupPanel.classList.remove('hidden');
         } else {
@@ -222,7 +213,6 @@
             adminEndPanel.classList.add('hidden');
         }
 
-        // Handle Active Player Phase UI rendering paths
         if (!localGameState.isLocked) {
             playerPanel.classList.add('hidden');
             paymentGatewayBox.classList.add('hidden');
@@ -230,7 +220,6 @@
         } else {
             ticketCountDisplay.innerText = `Total Pool Codes: ${localGameState.validCodes.length}`;
             
-            // GoCardless automation success verification flag reader
             if (urlParams.get('status') === 'paid' && !sessionStorage.getItem('ball_ticket')) {
                 const newAutoToken = "GC-" + Math.floor(100000 + Math.random() * 900000);
                 
@@ -287,7 +276,6 @@
     markerCanvas.addEventListener('mousedown', function(e) {
         if (!globalImgInstance || localGameState.gameRevealed) return;
 
-        // If game is un-locked and user has the admin URL parameter key, they are setting target vectors
         if (!localGameState.isLocked) {
             if (isAdminAuthenticated) {
                 const rect = gameCanvas.getBoundingClientRect();
@@ -389,13 +377,14 @@
                 }
                 mCtx.stroke();
 
+                // 🌟 FIX APPLIED HERE: Re-ordered engine parameters strictly for filled text tracking
                 mCtx.shadowColor = "black";
-                mCtx.shadowBlur = 4;
-                mCtx.lineWidth = 2;
-
-                mCtx.fillStyle = '#ffffff';
+                mCtx.shadowBlur = 5;
+                mCtx.fillStyle = '#ffffff'; // Clean 6-unit White Hex
                 mCtx.font = 'bold 20px sans-serif';
                 mCtx.fillText(` ${guess.name} (${guess.ticketUsed})`, guess.x + 8, guess.y + 4);
+                
+                // Clear shadows immediately so lines aren't blurry
                 mCtx.shadowBlur = 0;
             });
         }
